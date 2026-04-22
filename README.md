@@ -27,13 +27,13 @@
 
 ---
 
-## 📊 實驗結果與視覺化展示 (Experimental Results & Visualization)
+## 📊 預期視覺化效果與概念展示 (Conceptual Visualization & Expected Results)
 
-以下為本專案的核心實驗結果與圖表展示，具體細節可參閱 PDF 完整論文：
+以下圖表為本專案研究提案階段的概念視覺化與預期效果展示，主要用於輔助說明模型架構與預期的特徵標註，具體的實證數據將於後續研究中完整呈現：
 
-![實驗結果圖表 1](./unnamed.png)
+![預期概念圖表 1](./unnamed.png)
 
-![實驗結果圖表 2](./unnamed%20(1).png)
+![預期概念圖表 2](./unnamed%20(1).png)
 
 ---
 
