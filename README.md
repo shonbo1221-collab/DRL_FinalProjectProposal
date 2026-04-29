@@ -5,6 +5,14 @@
 
 ---
 
+## 🎥 專案介紹影片 (Project Presentation Video)
+
+[![專案介紹影片](https://img.youtube.com/vi/Ve5K4iN_qSA/hqdefault.jpg)](https://youtu.be/Ve5K4iN_qSA)
+
+*(點擊上方圖片即可觀看 YouTube 完整介紹影片)*
+
+---
+
 ## 摘要與緒論 (Abstract & Introduction)
 
 ### A. ATTENTION GETTER (動機及引題與市場分析)
