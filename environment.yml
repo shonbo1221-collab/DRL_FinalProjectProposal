@@ -1,0 +1,15 @@
+name: ppo_smc_0050
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - gymnasium==1.2.3
+      - numpy==2.2.6
+      - pandas==2.3.3
+      - plotly==6.7.0
+      - stable-baselines3==2.8.0
+      - streamlit==1.57.0
+      - yfinance==1.3.0
