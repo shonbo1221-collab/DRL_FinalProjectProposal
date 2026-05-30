@@ -1,10 +1,14 @@
 name: ppo_smc_0050
 channels:
+  - pytorch
+  - nvidia
   - conda-forge
   - defaults
 dependencies:
   - python=3.10
   - pip
+  - pytorch
+  - pytorch-cuda=12.1
   - pip:
       - gymnasium==1.2.3
       - numpy==2.2.6

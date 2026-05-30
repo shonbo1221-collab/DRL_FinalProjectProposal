@@ -1,268 +1,216 @@
-# 結合 PPO 與 SMC 特徵的 0050 動態資金配置框架
+# TWSE PPO + SMC Trading Pipeline
 
-Dynamic Capital Allocation Framework combining Proximal Policy Optimization (PPO) and Smart Money Concept (SMC) features.
+本專案是一個台股量化交易研究平台，核心是把 SMC 價格行為特徵轉成數值資料，再用 Stable-Baselines3 PPO 訓練資金配置策略。
 
-本專案是一個量化交易研究原型，目標是將主觀的 SMC 價格行為概念轉換成可計算特徵，再交給 PPO 強化學習模型決定 0050 ETF 的動態持倉比例。
+目前專案已移除舊版單一 0050 demo，只保留正式的「訓練 / 推論分離」架構。
 
-目前程式實作聚焦於單一標的 `0050.TW` 的資金配置，不是完整的配對交易系統。README 保留研究動機，但以下說明以目前程式碼實際完成的功能為準。
+## 目前模型
 
-## 專案目標
-
-傳統 SMC 交易方法常依賴交易者主觀判斷，例如 Fair Value Gap、Order Block、Premium / Discount 區間等。本專案嘗試將這些概念數值化，並用 PPO 學習在不同市場狀態下應該配置多少資金到 0050。
-
-模型輸出的不是單純買進或賣出，而是目標持倉權重。也就是說，代理人會根據目前市場特徵，決定資金應該維持低曝險、中曝險或高曝險。
-
-## 系統流程
-
-![Research workflow](docs/images/workflow.png)
-
-1. 下載 0050 歷史 OHLCV 資料。
-2. 建立技術指標與 SMC 特徵。
-3. 將特徵餵入自定義 Gymnasium 交易環境。
-4. 使用 Stable-Baselines3 PPO 訓練資金配置策略。
-5. 使用測試區間回測，並在 Streamlit app 中視覺化結果。
-
-## SMC 特徵模組
-
-SMC 相關邏輯集中在 `features/` 目錄，主要目的是把價格行為轉成 PPO 可以讀取的數值欄位。
-
-### Fair Value Gap (FVG)
-
-檔案：`features/smc_extractor.py`
-
-目前定義：
-
-- Bullish FVG：當日低點高於兩日前高點。
-- Bearish FVG：當日高點低於兩日前低點。
-- 特徵輸出為目前收盤價距離最近 FVG 中點的百分比距離。
-
-輸出欄位：
-
-- `dist_to_bull_fvg`
-- `dist_to_bear_fvg`
-
-### Premium / Discount Array
-
-檔案：`features/smc_extractor.py`
-
-使用最近 60 日高低區間計算目前價格所在位置：
+Model 1：Pair model
 
 ```text
-pd_ratio = (close - rolling_min_low) / (rolling_max_high - rolling_min_low)
+0050.TW vs 2330.TW
+model/saved/ppo_model_pair.zip
 ```
 
-解讀方式：
-
-- `pd_ratio` 接近 0：價格偏向 Discount 區。
-- `pd_ratio` 接近 1：價格偏向 Premium 區。
-- `pd_ratio` 接近 0.5：價格位於區間中性位置。
-
-### Order Block
-
-檔案：`features/smc_extractor.py`
-
-目前實作的是簡化版 Bullish Order Block：
-
-- 先找出 3 日報酬率大於門檻值的上漲 impulse。
-- 再往前尋找最近一根 bearish candle。
-- 以該 bearish candle 的高點作為 bullish order block 參考價位。
-
-輸出欄位：
-
-- `dist_to_bull_ob`
-
-### 技術指標
-
-檔案：`data/preprocessor.py`
-
-除了 SMC 特徵，模型也會使用一般技術指標：
-
-- `return_5d`
-- `atr_20`
-- `dev_ma_20`
-- `dev_ma_60`
-
-特徵整合入口在 `features/builder.py`。
-
-## PPO 演算法模組
-
-PPO 相關邏輯分成訓練、交易環境與回測三個部分。
-
-### 交易環境
-
-檔案：`env/trading_env.py`
-
-交易環境遵循 Gymnasium 介面。觀察空間共有 10 個維度：
-
-- 8 個市場特徵：SMC 特徵與技術指標。
-- 2 個帳戶狀態：目前持倉權重與現金比例。
-
-動作空間為連續值：
+Model 2：Basket model
 
 ```text
-raw_action in [-1, 1]
-target_weight in [0, max_position]
+0050.TW vs 2330.TW vs 2412.TW
+model/saved/ppo_model_basket.zip
 ```
 
-目前 `max_position = 0.8`，代表模型最多配置 80% 資金到 0050，不使用槓桿，也不放空。
+## 資料區間
 
-### Reward 設計
-
-檔案：`env/trading_env.py`
-
-Reward 由三個部分組成：
+訓練資料：
 
 ```text
-reward = log_return - mdd_penalty - turnover_penalty
+2018-01-01 to 2024-12-31
 ```
 
-設計目的：
-
-- 鼓勵資產淨值成長。
-- 懲罰最大回撤增加。
-- 懲罰過度換手，避免模型每天劇烈調倉。
-
-### 模型訓練
-
-檔案：`train.py`
-
-訓練資料區間：
+推論資料：
 
 ```text
-2014-01-01 to 2020-12-31
+2025-01-01 to 2026-05-01
 ```
 
-訓練設定：
-
-- Algorithm：PPO
-- Policy：MlpPolicy
-- Total timesteps：200,000
-- Network：policy/value function 各兩層 64 units
-- Observation / reward normalization：`VecNormalize`
-
-訓練完成後會輸出：
-
-- `model/saved/ppo_smc_0050.zip`
-- `model/saved/ppo_smc_0050_vecnormalize.pkl`
-
-### 回測
-
-檔案：`eval/backtester.py`
-
-測試資料區間：
+## 主要檔案
 
 ```text
-2021-01-01 to 2024-01-01
+app.py                    # Streamlit 推論驗證網頁
+train_pipeline.py         # 只負責訓練與儲存 PPO 權重
+predict_pipeline.py       # 只負責載入模型並做 out-of-sample 推論
+twse_pipeline_common.py   # 共用資料、特徵、交易環境、績效計算
+environment.yml           # Conda 環境設定
+model/saved/              # 模型輸出位置
+docs/                     # 報告與圖片
 ```
 
-回測會載入已訓練模型，逐日產生目標持倉權重，並計算：
+## SMC 特徵
 
-- Total Return
-- Annualized Return
-- Max Drawdown
-- Sharpe Ratio
-
-## 視覺化介面
-
-檔案：`app.py`
-
-Streamlit app 會顯示：
-
-- 回測績效指標。
-- 0050 K 線圖。
-- PPO 輸出的持倉權重變化。
-- PPO+SMC 策略與 Buy & Hold 的資產曲線比較。
-
-啟動方式：
-
-```bash
-streamlit run app.py
-```
-
-## 專案結構
+每個標的都會產生：
 
 ```text
-.
-├── app.py
-├── train.py
-├── environment.yml
-├── README.md
-├── data/
-│   ├── downloader.py
-│   ├── preprocessor.py
-│   └── raw/
-├── docs/
-│   ├── images/
-│   │   ├── framework.png
-│   │   ├── related-work.png
-│   │   └── workflow.png
-│   ├── notes/
-│   │   └── abstract-outline.txt
-│   └── reports/
-│       ├── dynamic-ppo-smc-capital-allocation.pdf
-│       ├── gemini-research-draft.pdf
-│       └── ppo-smc-dynamic-capital-allocation.pdf
-├── env/
-│   └── trading_env.py
-├── eval/
-│   └── backtester.py
-├── features/
-│   ├── builder.py
-│   └── smc_extractor.py
-└── model/
-    └── saved/
+PD_Pos      # 價格在 20 日 dealing range 的位置，約 0 到 1
+OB_Dist     # 距離最近 Order Block 的百分比距離
+FVG_Signal  # 是否存在尚未回補的 Fair Value Gap
 ```
 
-## 研究圖示
+Pair / Basket 模型還會加入 rolling spread z-score：
 
-### 文獻回顧與痛點
+```text
+Spread_ZScore_0050_TW_2330_TW
+Spread_ZScore_0050_TW_2412_TW
+Spread_ZScore_2330_TW_2412_TW
+```
 
-![Related work](docs/images/related-work.png)
+Pair model 只會使用 `0050.TW` 與 `2330.TW` 的 spread z-score。Basket model 會使用三組 pairwise spread z-score。
 
-### 模型框架
+## Action 設計
 
-![Model framework](docs/images/framework.png)
+Pair model action shape：
 
-### 決策流程
+```text
+[-1, 1]
+```
 
-![Decision workflow](docs/images/workflow.png)
+解讀：
 
-## 環境安裝
+```text
+action > 0  -> 配置 0050.TW
+action < 0  -> 配置 2330.TW
+action ~= 0 -> 偏現金
+```
 
-使用 Conda 建立環境：
+Basket model action shape：
+
+```text
+[action_0050, action_2330, action_2412]
+```
+
+解讀：
+
+```text
+正值越大，該標的分到越多權重
+全部小於等於 0，則保留現金
+三個正值會被正規化成總持倉權重
+```
+
+## TWSE 交易限制
+
+環境內建：
+
+```text
+手續費：0.1425% * 0.6
+0050.TW 賣出交易稅：0.1%
+2330.TW / 2412.TW 賣出交易稅：0.3%
+漲停限制：若價格 >= 昨日收盤 * 1.10，該標的 order 失敗
+```
+
+## Reward
+
+```text
+Reward = PnL * Sharpe_Adjustment - Transaction_Cost - 2.0 * Max_Drawdown_Penalty
+```
+
+模型不只追求損益，也會被交易成本與回撤懲罰約束。
+
+## 安裝環境
 
 ```bash
 conda env create -f environment.yml
 conda activate ppo_smc_0050
 ```
 
-## 常用指令
-
-重新訓練模型：
+如果要指定環境位置：
 
 ```bash
-python train.py
+conda env create -f environment.yml -p D:\Env\conda_envs\ppo_smc_0050
+conda activate D:\Env\conda_envs\ppo_smc_0050
 ```
 
-啟動回測介面：
+## GPU 訓練
+
+`train_pipeline.py` 現在是 CUDA-only 設定：
+
+```python
+DEVICE = "cuda:0"
+```
+
+如果沒有 CUDA GPU，程式會直接停止，不會自動退回 CPU。
+
+訓練時會固定把 PPO policy/value network 放在 GPU 上：
+
+```python
+model = PPO(..., device="cuda:0")
+```
+
+注意：Gymnasium 環境模擬、yfinance 下載與 pandas 特徵工程仍然會在 CPU 執行。這是 Stable-Baselines3 + Gym 的正常架構。此修改能避免 PPO 權重訓練默默退回 CPU，但不代表整個資料處理流程都會變成 GPU kernel。
+
+如果 `torch.cuda.is_available()` 是 `False`，請安裝 CUDA 版 PyTorch，例如：
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+```
+
+檢查 GPU：
+
+```bash
+python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU only')"
+```
+
+## 訓練
+
+```bash
+python train_pipeline.py
+```
+
+訓練會依序產生：
+
+```text
+model/saved/ppo_model_pair.zip
+model/saved/ppo_model_basket.zip
+```
+
+## 推論
+
+```bash
+python predict_pipeline.py
+```
+
+推論只會載入模型並執行：
+
+```python
+model.predict(obs, deterministic=True)
+```
+
+推論階段不會呼叫 `model.learn()`，也不會更新 policy weights。
+
+## 網頁驗證
 
 ```bash
 streamlit run app.py
 ```
 
-## 目前完成狀態
+網頁會顯示：
 
-已完成：
+```text
+模型檔案是否存在
+2025-2026 out-of-sample inference
+Pair vs Basket 績效比較
+Cumulative Return
+Sharpe Ratio
+Max Drawdown
+PPO actions
+實際持倉權重
+Portfolio net worth
+Inference log
+```
 
-- 0050 歷史資料下載。
-- 技術指標與簡化版 SMC 特徵工程。
-- Gymnasium 交易環境。
-- PPO 訓練流程。
-- 已訓練模型與 normalization stats。
-- 回測與 Streamlit 視覺化。
+## 專案定位
 
-待補強：
+一句話：
 
-- README 研究敘述仍有部分「配對交易」概念，但目前程式尚未實作 pair spread、cointegration 或 z-score 策略。
-- SMC 特徵仍是簡化定義，後續可加入更嚴謹的 market structure、liquidity sweep、multi-timeframe confirmation。
-- 目前回測尚未加入更多 baseline，例如固定權重、移動平均策略、傳統 SMC 規則策略。
+```text
+這是一個用 PPO 強化學習搭配 SMC 特徵，測試台股 pair/basket 資金配置策略的研究平台。
+```
