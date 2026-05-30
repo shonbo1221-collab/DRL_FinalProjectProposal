@@ -1,57 +1,268 @@
-# 結合 PPO 算法與 SMC 特徵的動態資金配置框架
-**(Dynamic Capital Allocation Framework combining PPO and Smart Money Concept)**
+# 結合 PPO 與 SMC 特徵的 0050 動態資金配置框架
 
-> 本專案融合金融微觀結構特徵（SMC）與前沿強化學習算法（PPO），旨在應對當前高波動市場環境，提出具備高度靈活性與科學化決策的動態資金配置框架。
+Dynamic Capital Allocation Framework combining Proximal Policy Optimization (PPO) and Smart Money Concept (SMC) features.
 
----
+本專案是一個量化交易研究原型，目標是將主觀的 SMC 價格行為概念轉換成可計算特徵，再交給 PPO 強化學習模型決定 0050 ETF 的動態持倉比例。
 
-## 🎥 專案介紹影片 (Project Presentation Video)
+目前程式實作聚焦於單一標的 `0050.TW` 的資金配置，不是完整的配對交易系統。README 保留研究動機，但以下說明以目前程式碼實際完成的功能為準。
 
-[![專案介紹影片](https://img.youtube.com/vi/Ve5K4iN_qSA/hqdefault.jpg)](https://youtu.be/Ve5K4iN_qSA)
+## 專案目標
 
-*(點擊上方圖片即可觀看 YouTube 完整介紹影片)*
+傳統 SMC 交易方法常依賴交易者主觀判斷，例如 Fair Value Gap、Order Block、Premium / Discount 區間等。本專案嘗試將這些概念數值化，並用 PPO 學習在不同市場狀態下應該配置多少資金到 0050。
 
----
+模型輸出的不是單純買進或賣出，而是目標持倉權重。也就是說，代理人會根據目前市場特徵，決定資金應該維持低曝險、中曝險或高曝險。
 
-## 摘要與緒論 (Abstract & Introduction)
+## 系統流程
 
-### A. ATTENTION GETTER (動機及引題與市場分析)
-在現代資本市場中，資金配置的效率直接決定了量化交易系統的生存能力。隨著演算法交易佔據市場主導地位，傳統基於靜態規則的「Smart Money Concept (SMC)」雖然能捕捉機構級的供需失衡，卻難以在極端波動中精確管理曝險。根據 2024 至 2026 年的市場數據顯示，全球股市的日間波動率（Realized Volatility）較過去均值上升了 25%，且市場結構轉變（Regime Change）的頻率大幅增加。 本研究創新地結合了具備強大非線性決策能力的強化學習算法與經典的配對交易策略，試圖在相對價值的框架下，探索資金利用率的最大化，這對於追求極致風險收益比（Sharpe Ratio）的實務領域具備高度學術吸引力。
+![Research workflow](docs/images/workflow.png)
 
-### B. BUT (然而 / 挑戰與痛點)
-儘管 SMC 交易法在零售交易者中極受追捧，但其核心概念如「訂單塊 (Order Block)」與「公允價值缺口 (FVG)」往往依賴主觀經驗判斷，缺乏嚴謹的數值化定義。現有文獻（如 Gatev et al.）指出，傳統配對交易大多依賴固定的標準差（Z-Score）閾值進行等權重下注。這導致系統在面對高波動環境下的結構性破裂時，缺乏彈性的資金保護機制。目前該領域面臨的痛點在於：如何在保留 SMC 對機構流動性捕捉能力的同時，克服其主觀性，並引入能動態適應市場環境的調倉機制。
+1. 下載 0050 歷史 OHLCV 資料。
+2. 建立技術指標與 SMC 特徵。
+3. 將特徵餵入自定義 Gymnasium 交易環境。
+4. 使用 Stable-Baselines3 PPO 訓練資金配置策略。
+5. 使用測試區間回測，並在 Streamlit app 中視覺化結果。
 
-> **文獻回顧與痛點分析圖示**
-> 
-> ![Related Work](./Related%20Work.png)
+## SMC 特徵模組
 
-### C. CURE (解藥 / We propose...)
-為了解決上述挑戰，我們提出了一套基於近端策略優化 (PPO) 算法的動態資金配置框架。本研究的獨特價值在於橋接了主觀經驗與客觀算法：該框架首創將 SMC 的 PD-Array 矩陣轉化為具備時間序列特徵的張量輸入，讓人工智慧能像專業交易員一樣識別「溢價 (Premium)」與「折價 (Discount)」區間。透過 PPO 算法的連續動作空間特性，系統不再只是二元化地執行買賣，而是能針對當前市場的不確定性，精確輸出最優的資金分配權重。
+SMC 相關邏輯集中在 `features/` 目錄，主要目的是把價格行為轉成 PPO 可以讀取的數值欄位。
 
-> **系統框架示意圖**
-> 
-> ![模型框架](./%E6%A1%86%E6%9E%B6.png)
+### Fair Value Gap (FVG)
 
-### D. DEVELOPMENT (方法設計 / Based on...)
-本研究的方法論基礎建立在「數據驅動的決策鏈」之上。我們設計了一個自定義的 Gymnasium 金融環境，其觀察空間整合了兩支標的的協整性統計量與多時框 SMC 形態特徵。模型核心採用 PPO 算法，利用其「裁剪代理目標函數（Clipped Surrogate Objective）」來確保在金融高噪聲數據中的訓練穩定性。透過設計包含「PnL、夏普比率與最大回撤懲罰」的複合式獎勵函數，模型得以實現從視覺化形態到高維度自動化決策的無縫轉換。
+檔案：`features/smc_extractor.py`
 
-> **決策與實驗流程圖**
-> 
-> ![研究流程](./%E6%B5%81%E7%A8%8B.png)
+目前定義：
 
-### E. EXPERIMENTS (實驗與評估 / To evaluate...)
-為驗證本方法的有效性，我們選取了美股科技板塊中具備高度協整性的股票對進行大規模回測實驗。我們將透過量性指標（如年化收益率、夏普比率、最大回撤）與定性指標（如模型收斂速度、對市場轉折點的識別敏感度）進行評估。實驗將與當前最先進（State-of-the-Art）的固定閾值統計套利模型以及傳統深度學習回歸模型進行對標測試，以證實強化學習在動態環境下的優越適應力。
+- Bullish FVG：當日低點高於兩日前高點。
+- Bearish FVG：當日高點低於兩日前低點。
+- 特徵輸出為目前收盤價距離最近 FVG 中點的百分比距離。
 
-### F. FINDINGS (關鍵發現 / Results show that...)
-研究結果顯示，結合 PPO 算法與 SMC 特徵的動態配置模型，在風險調整後收益上顯著優於基準模型。關鍵數據指出，在高波動市場環境下，本模型能使最大回撤降低約 15% 至 20%，並提升整體夏普比率達 30% 以上。這充分證明了本研究在提升資金管理靈活性、去主觀化交易以及科學化決策方面的核心貢獻。
+輸出欄位：
 
----
+- `dist_to_bull_fvg`
+- `dist_to_bear_fvg`
 
-## 📂 專案檔案與目錄結構 (Project Structure)
+### Premium / Discount Array
 
-專案目前包含以下核心文檔：
+檔案：`features/smc_extractor.py`
 
-- 📄 **`Dynamic_PPO_SMC_Capital_Allocation.pdf`** / **`PPO_SMC_Dynamic_Capital_Allocation.pdf`**
-  - 本研究之核心論文及報告主體，詳細說明模型架構、數學推導與實驗結果。
-- 🖼️ **`Related Work.png`**, **`框架.png`**, **`流程.png`**
-  - 研究文獻分析、模型框架圖與決策流程圖。
+使用最近 60 日高低區間計算目前價格所在位置：
+
+```text
+pd_ratio = (close - rolling_min_low) / (rolling_max_high - rolling_min_low)
+```
+
+解讀方式：
+
+- `pd_ratio` 接近 0：價格偏向 Discount 區。
+- `pd_ratio` 接近 1：價格偏向 Premium 區。
+- `pd_ratio` 接近 0.5：價格位於區間中性位置。
+
+### Order Block
+
+檔案：`features/smc_extractor.py`
+
+目前實作的是簡化版 Bullish Order Block：
+
+- 先找出 3 日報酬率大於門檻值的上漲 impulse。
+- 再往前尋找最近一根 bearish candle。
+- 以該 bearish candle 的高點作為 bullish order block 參考價位。
+
+輸出欄位：
+
+- `dist_to_bull_ob`
+
+### 技術指標
+
+檔案：`data/preprocessor.py`
+
+除了 SMC 特徵，模型也會使用一般技術指標：
+
+- `return_5d`
+- `atr_20`
+- `dev_ma_20`
+- `dev_ma_60`
+
+特徵整合入口在 `features/builder.py`。
+
+## PPO 演算法模組
+
+PPO 相關邏輯分成訓練、交易環境與回測三個部分。
+
+### 交易環境
+
+檔案：`env/trading_env.py`
+
+交易環境遵循 Gymnasium 介面。觀察空間共有 10 個維度：
+
+- 8 個市場特徵：SMC 特徵與技術指標。
+- 2 個帳戶狀態：目前持倉權重與現金比例。
+
+動作空間為連續值：
+
+```text
+raw_action in [-1, 1]
+target_weight in [0, max_position]
+```
+
+目前 `max_position = 0.8`，代表模型最多配置 80% 資金到 0050，不使用槓桿，也不放空。
+
+### Reward 設計
+
+檔案：`env/trading_env.py`
+
+Reward 由三個部分組成：
+
+```text
+reward = log_return - mdd_penalty - turnover_penalty
+```
+
+設計目的：
+
+- 鼓勵資產淨值成長。
+- 懲罰最大回撤增加。
+- 懲罰過度換手，避免模型每天劇烈調倉。
+
+### 模型訓練
+
+檔案：`train.py`
+
+訓練資料區間：
+
+```text
+2014-01-01 to 2020-12-31
+```
+
+訓練設定：
+
+- Algorithm：PPO
+- Policy：MlpPolicy
+- Total timesteps：200,000
+- Network：policy/value function 各兩層 64 units
+- Observation / reward normalization：`VecNormalize`
+
+訓練完成後會輸出：
+
+- `model/saved/ppo_smc_0050.zip`
+- `model/saved/ppo_smc_0050_vecnormalize.pkl`
+
+### 回測
+
+檔案：`eval/backtester.py`
+
+測試資料區間：
+
+```text
+2021-01-01 to 2024-01-01
+```
+
+回測會載入已訓練模型，逐日產生目標持倉權重，並計算：
+
+- Total Return
+- Annualized Return
+- Max Drawdown
+- Sharpe Ratio
+
+## 視覺化介面
+
+檔案：`app.py`
+
+Streamlit app 會顯示：
+
+- 回測績效指標。
+- 0050 K 線圖。
+- PPO 輸出的持倉權重變化。
+- PPO+SMC 策略與 Buy & Hold 的資產曲線比較。
+
+啟動方式：
+
+```bash
+streamlit run app.py
+```
+
+## 專案結構
+
+```text
+.
+├── app.py
+├── train.py
+├── environment.yml
+├── README.md
+├── data/
+│   ├── downloader.py
+│   ├── preprocessor.py
+│   └── raw/
+├── docs/
+│   ├── images/
+│   │   ├── framework.png
+│   │   ├── related-work.png
+│   │   └── workflow.png
+│   ├── notes/
+│   │   └── abstract-outline.txt
+│   └── reports/
+│       ├── dynamic-ppo-smc-capital-allocation.pdf
+│       ├── gemini-research-draft.pdf
+│       └── ppo-smc-dynamic-capital-allocation.pdf
+├── env/
+│   └── trading_env.py
+├── eval/
+│   └── backtester.py
+├── features/
+│   ├── builder.py
+│   └── smc_extractor.py
+└── model/
+    └── saved/
+```
+
+## 研究圖示
+
+### 文獻回顧與痛點
+
+![Related work](docs/images/related-work.png)
+
+### 模型框架
+
+![Model framework](docs/images/framework.png)
+
+### 決策流程
+
+![Decision workflow](docs/images/workflow.png)
+
+## 環境安裝
+
+使用 Conda 建立環境：
+
+```bash
+conda env create -f environment.yml
+conda activate ppo_smc_0050
+```
+
+## 常用指令
+
+重新訓練模型：
+
+```bash
+python train.py
+```
+
+啟動回測介面：
+
+```bash
+streamlit run app.py
+```
+
+## 目前完成狀態
+
+已完成：
+
+- 0050 歷史資料下載。
+- 技術指標與簡化版 SMC 特徵工程。
+- Gymnasium 交易環境。
+- PPO 訓練流程。
+- 已訓練模型與 normalization stats。
+- 回測與 Streamlit 視覺化。
+
+待補強：
+
+- README 研究敘述仍有部分「配對交易」概念，但目前程式尚未實作 pair spread、cointegration 或 z-score 策略。
+- SMC 特徵仍是簡化定義，後續可加入更嚴謹的 market structure、liquidity sweep、multi-timeframe confirmation。
+- 目前回測尚未加入更多 baseline，例如固定權重、移動平均策略、傳統 SMC 規則策略。
