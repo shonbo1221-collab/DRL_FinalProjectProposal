@@ -1,4 +1,5 @@
 import os
+from dataclasses import replace
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -16,21 +17,49 @@ from twse_pipeline_common import (
 
 st.set_page_config(page_title="TWSE PPO + SMC Pipeline", layout="wide")
 
+COLAB_MODEL_DIR = "model/save_colab"
+COLAB_CONFIGS = (
+    replace(PAIR_CONFIG, model_path=os.path.join(COLAB_MODEL_DIR, "ppo_model_pair.zip")),
+    replace(BASKET_CONFIG, model_path=os.path.join(COLAB_MODEL_DIR, "ppo_model_basket.zip")),
+)
 
-def run_twse_inference(config, start_date, end_date, initial_capital):
+
+@st.cache_data(show_spinner=False)
+def load_feature_data(config, start_date, end_date):
+    return prepare_dataset(config, start_date, end_date)
+
+
+@st.cache_resource(show_spinner=False)
+def load_ppo_model(model_path):
+    return PPO.load(model_path)
+
+
+def run_twse_inference(
+    config,
+    start_date,
+    end_date,
+    initial_capital,
+    max_position,
+    deterministic,
+):
     if not os.path.exists(config.model_path):
         raise FileNotFoundError(f"Model not found: {config.model_path}")
 
-    feature_df = prepare_dataset(config, start_date, end_date)
-    env = TWTradingEnv(feature_df=feature_df, config=config, initial_balance=initial_capital)
-    model = PPO.load(config.model_path)
+    feature_df = load_feature_data(config, start_date, end_date)
+    env = TWTradingEnv(
+        feature_df=feature_df,
+        config=config,
+        initial_balance=initial_capital,
+        max_position=max_position,
+    )
+    model = load_ppo_model(config.model_path)
 
     obs, _ = env.reset()
     done = False
     action_logs = []
 
     while not done:
-        action, _ = model.predict(obs, deterministic=True)
+        action, _ = model.predict(obs, deterministic=deterministic)
         action_values = action.reshape(-1).astype(float)
         log_row = {"date": env.df.loc[env.current_step, "date"], "action": float(action_values[0])}
         for idx, ticker in enumerate(config.tickers):
@@ -89,7 +118,7 @@ def plot_result(result):
             go.Scatter(x=actions["date"], y=actions["action"], mode="lines", name="Action")
         )
     fig_action.update_layout(
-        title=f"{config.name} Deterministic PPO Actions",
+        title=f"{config.name} PPO Actions",
         yaxis_title="Action [-1, 1]",
         height=320,
         template="plotly_dark",
@@ -122,17 +151,39 @@ def plot_result(result):
 
 
 def main():
-    st.title("TWSE PPO + SMC Training / Inference Verification")
+    st.title("TWSE PPO + SMC Colab Model Inference")
     st.caption(
-        "This app validates the separated TWSE training and inference pipeline."
+        "Load trained PPO models from model/save_colab and run inference on a selected validation period."
     )
 
-    col_a, col_b, col_c = st.columns(3)
-    start_date = col_a.date_input("Inference Start", pd.to_datetime("2025-01-01"))
-    end_date = col_b.date_input("Inference End", pd.to_datetime("2026-05-01"))
-    initial_capital = col_c.number_input("Initial Capital", value=1_000_000, step=100_000)
+    config_by_name = {config.name: config for config in COLAB_CONFIGS}
+    with st.sidebar:
+        st.header("Inference Settings")
+        selected_names = st.multiselect(
+            "Models",
+            options=list(config_by_name),
+            default=list(config_by_name),
+        )
+        start_date = st.date_input("Validation Start", pd.to_datetime("2025-01-01"))
+        end_date = st.date_input("Validation End", pd.to_datetime("2026-05-01"))
+        initial_capital = st.number_input(
+            "Initial Capital (NTD)",
+            min_value=100_000,
+            value=1_000_000,
+            step=100_000,
+        )
+        max_position = st.slider(
+            "Maximum Invested Position Ratio",
+            min_value=0.05,
+            max_value=1.00,
+            value=0.95,
+            step=0.05,
+            format="%.2f",
+        )
+        deterministic = st.toggle("Deterministic Actions", value=True)
+        run_inference = st.button("Run Validation Inference", type="primary", use_container_width=True)
 
-    configs = (PAIR_CONFIG, BASKET_CONFIG)
+    configs = tuple(config_by_name[name] for name in selected_names)
     model_status = pd.DataFrame(
         [
             {
@@ -145,9 +196,17 @@ def main():
             for config in configs
         ]
     )
+    st.subheader("Colab Model Status")
     st.dataframe(model_status, use_container_width=True)
 
-    if st.button("Run Out-of-Sample Inference", type="primary"):
+    if run_inference:
+        if not configs:
+            st.warning("Select at least one model.")
+            return
+        if start_date >= end_date:
+            st.error("Validation End must be later than Validation Start.")
+            return
+
         results = []
         for config in configs:
             try:
@@ -157,6 +216,8 @@ def main():
                         start_date.strftime("%Y-%m-%d"),
                         end_date.strftime("%Y-%m-%d"),
                         initial_capital,
+                        max_position,
+                        deterministic,
                     )
                 results.append(
                     {
@@ -169,7 +230,7 @@ def main():
                 )
             except FileNotFoundError as exc:
                 st.error(str(exc))
-                st.info("Run `python train_pipeline.py` first, then return to this page.")
+                st.info("Upload or copy the trained Colab model files into `model/save_colab`.")
                 return
             except Exception as exc:
                 st.exception(exc)
@@ -188,6 +249,12 @@ def main():
             ]
         )
         st.subheader("Out-of-Sample Comparison")
+        st.caption(
+            f"Validation period: {start_date} to {end_date} | "
+            f"Initial capital: NTD {initial_capital:,.0f} | "
+            f"Maximum invested position ratio: {max_position:.2f} | "
+            f"Deterministic actions: {deterministic}"
+        )
         st.dataframe(
             comparison.style.format(
                 {
@@ -202,7 +269,7 @@ def main():
         for result in results:
             plot_result(result)
     else:
-        st.info("Run `python train_pipeline.py` first, then click the inference button.")
+        st.info("Choose a validation period and inference settings, then run validation inference.")
 
 
 if __name__ == "__main__":
