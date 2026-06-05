@@ -161,6 +161,17 @@ def build_feature_frame(raw_frames, config):
     else:
         merged["Spread_ZScore"] = 0.0
 
+    # Avoid same-bar leakage: decisions at row t can only use market features
+    # computed from information available through row t-1. Raw OHLCV columns
+    # remain unshifted because they are used by the environment for execution
+    # and mark-to-market accounting at row t.
+    feature_cols = [
+        col
+        for col in merged.columns
+        if any(token in col for token in ("PD_Pos", "OB_Dist", "FVG_Signal", "Spread_ZScore"))
+    ]
+    merged[feature_cols] = merged[feature_cols].shift(1)
+
     merged = merged.dropna().reset_index(drop=True)
     return merged
 
