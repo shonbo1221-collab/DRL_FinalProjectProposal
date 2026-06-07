@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1152" viewBox="0 0 2048 1152" role="img" aria-labelledby="title desc">
+  <title id="title">PPO Decision and Training Flow in SMC Trading System</title>
+  <desc id="desc">A conceptual diagram showing the correct PPO decision and training flow in the SMC-based trading system, without SARSA.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L13,8 L2,14 Z" fill="#15384f"/>
+    </marker>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0b2230" flood-opacity="0.16"/>
+    </filter>
+    <linearGradient id="river" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d9e9ed"/>
+      <stop offset="0.55" stop-color="#86aebb"/>
+      <stop offset="1" stop-color="#174e6c"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfbf7"/>
+      <stop offset="1" stop-color="#eef4f3"/>
+    </linearGradient>
+    <style>
+      .bg { fill: #f7f8f4; }
+      .title { font: 800 58px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #05090d; }
+      .subtitle { font: 500 29px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #1c2933; }
+      .section { font: 800 36px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #071018; }
+      .heading { font: 800 30px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #071018; }
+      .body { font: 500 24px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #182631; }
+      .small { font: 500 21px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #304452; }
+      .tiny { font: 500 18px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #4b5c68; }
+      .formula { font: 700 23px "Cascadia Mono", Consolas, monospace; fill: #172b3a; }
+      .panel { fill: url(#paper); stroke: #c4d1d5; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .card { fill: #ffffff; stroke: #ccd8dc; stroke-width: 2; rx: 14; filter: url(#shadow); }
+      .state { fill: #edf1fb; stroke: #95a7d8; stroke-width: 2; rx: 14; }
+      .env { fill: #e6f3f6; stroke: #91bdc9; stroke-width: 2; rx: 14; }
+      .ppo { fill: #fff1e3; stroke: #d99c62; stroke-width: 4; rx: 16; filter: url(#shadow); }
+      .metric { fill: #edf6f8; stroke: #9ebfcc; stroke-width: 2; rx: 12; }
+      .update { fill: #f1edf9; stroke: #b29bd7; stroke-width: 3; rx: 16; filter: url(#shadow); }
+      .tag { fill: #15384f; rx: 10; }
+      .tagText { font: 800 18px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #ffffff; }
+      .callout { fill: #ffffff; stroke: #15384f; stroke-width: 3; rx: 14; filter: url(#shadow); }
+      .navy { fill: #103a56; }
+      .accent { fill: #ff725f; }
+      .line { stroke: #15384f; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .softline { stroke: #77909b; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 10 9; }
+      .divider { stroke: #c7d2d7; stroke-width: 3; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="2048" height="1152"/>
+  <text class="title" x="72" y="84">PPO 在 SMC 交易系統中的正確訓練與推論流程</text>
+  <text class="subtitle" x="76" y="132">PPO 不使用 SARSA；它透過 policy gradient / actor-critic 與 clipped surrogate objective 更新交易策略。</text>
+
+  <rect class="panel" x="72" y="185" width="1904" height="180"/>
+  <text class="section" x="108" y="240">共用輸入：SMC 市場狀態</text>
+  <text class="body" x="108" y="286">台股 OHLCV 轉為 Premium/Discount、Order Block 距離、Fair Value Gap 與 Spread Z-Score。</text>
+  <text class="body" x="108" y="326">這些特徵組成 observation，提供給 PPO policy/value network 進行資金配置決策。</text>
+
+  <g transform="translate(1495,225)">
+    <polygon points="0,65 82,20 164,65 82,110" fill="#dce8ea" stroke="#173b53" stroke-width="3"/>
+    <polygon points="0,65 0,155 82,200 82,110" fill="#bfd2d8" stroke="#173b53" stroke-width="3"/>
+    <polygon points="164,65 164,155 82,200 82,110" fill="#8fb0bd" stroke="#173b53" stroke-width="3"/>
+    <polygon points="68,103 96,88 96,178 68,164" class="accent" stroke="#8a3a31" stroke-width="2"/>
+  </g>
+
+  <path d="M150 552 C290 482, 390 612, 525 532 S745 432, 885 517 S1095 637, 1265 537 S1440 447, 1570 522"
+        stroke="url(#river)" stroke-width="70" fill="none" opacity="0.82"/>
+  <path d="M150 552 C290 482, 390 612, 525 532 S745 432, 885 517 S1095 637, 1265 537 S1440 447, 1570 522"
+        stroke="#123a56" stroke-width="4" fill="none" opacity="0.45"/>
+
+  <rect class="state" x="120" y="465" width="250" height="132"/>
+  <rect class="tag" x="142" y="438" width="118" height="34"/>
+  <text class="tagText" x="161" y="461">STATE</text>
+  <text class="heading" x="152" y="510">Observation</text>
+  <text class="body" x="152" y="546">SMC 特徵</text>
+  <text class="small" x="152" y="576">持倉權重 + 現金比例</text>
+
+  <rect class="callout" x="95" y="635" width="310" height="182"/>
+  <text class="heading" x="128" y="680">State 組成</text>
+  <text class="small" x="128" y="718">1. SMC 價格行為特徵</text>
+  <text class="small" x="128" y="750">2. Spread Z-Score</text>
+  <text class="small" x="128" y="782">3. 當前持倉權重</text>
+  <text class="small" x="128" y="814">4. 現金比例</text>
+
+  <path class="line" d="M370 530 H458"/>
+
+  <rect class="ppo" x="470" y="420" width="410" height="185"/>
+  <text class="heading" x="506" y="466">PPO Agent (Model)</text>
+  <text class="body" x="506" y="506">Policy network 產生 action</text>
+  <text class="body" x="506" y="542">Value network 評估 state value</text>
+  <text class="small" x="506" y="576">Actor-Critic / Policy Gradient</text>
+
+  <rect class="env" x="980" y="465" width="300" height="132"/>
+  <text class="heading" x="1012" y="510">Action</text>
+  <text class="body" x="1012" y="546">Pair：選擇配置標的</text>
+  <text class="small" x="1012" y="576">Basket：輸出資金權重</text>
+
+  <path class="line" d="M880 530 H968"/>
+
+  <rect class="env" x="1370" y="465" width="300" height="132"/>
+  <text class="heading" x="1402" y="510">Trading Env</text>
+  <text class="body" x="1402" y="546">執行交易與再平衡</text>
+  <text class="small" x="1402" y="576">成本、稅費、回撤限制</text>
+
+  <path class="line" d="M1280 530 H1358"/>
+
+  <rect class="metric" x="1370" y="675" width="300" height="132"/>
+  <text class="heading" x="1402" y="720">Reward</text>
+  <text class="body" x="1402" y="756">PnL - 成本 - 風險懲罰</text>
+  <text class="small" x="1402" y="786">產生 rollout feedback</text>
+
+  <path class="line" d="M1520 597 V663"/>
+
+  <rect class="state" x="980" y="675" width="300" height="132"/>
+  <text class="heading" x="1012" y="720">Next Observation</text>
+  <text class="body" x="1012" y="756">下一交易日狀態</text>
+  <text class="small" x="1012" y="786">繼續 rollout 取樣</text>
+
+  <path class="line" d="M1370 742 H1292"/>
+
+  <rect class="update" x="470" y="675" width="410" height="180"/>
+  <text class="heading" x="506" y="722">PPO 更新策略</text>
+  <text class="body" x="506" y="762">估計 advantage</text>
+  <text class="body" x="506" y="798">使用 clipped objective</text>
+  <text class="small" x="506" y="828">限制 policy 更新幅度，提升穩定性</text>
+
+  <path class="softline dash" d="M980 742 C920 760, 900 796, 892 800"/>
+  <path class="softline dash" d="M675 675 C610 632, 610 618, 675 605"/>
+
+  <rect class="card" x="105" y="930" width="860" height="126"/>
+  <text class="heading" x="140" y="978">PPO 核心目標</text>
+  <text class="formula" x="140" y="1025">maximize  E[ min(r_t(θ)A_t, clip(r_t(θ), 1-ε, 1+ε)A_t) ]</text>
+
+  <rect class="card" x="1045" y="930" width="760" height="126"/>
+  <text class="heading" x="1080" y="978">正確結論</text>
+  <text class="body" x="1080" y="1018">目前系統的訓練與推論皆由 PPO 完成。</text>
+  <text class="small" x="1080" y="1048">SARSA 不屬於 PPO 流程，因此已從此圖移除。</text>
+
+  <line class="divider" x1="940" y1="392" x2="940" y2="885"/>
+  <text class="tiny" x="665" y="386">PPO policy/value learning layer</text>
+  <text class="tiny" x="970" y="386">Trading environment feedback layer</text>
+</svg>

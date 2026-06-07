@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1152" viewBox="0 0 2048 1152" role="img" aria-labelledby="title desc">
+  <title id="title">SARSA in SMC Reinforcement Learning Trading System</title>
+  <desc id="desc">Conceptual research-style diagram explaining where SARSA fits in the current SMC-based reinforcement learning trading system.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L13,8 L2,14 Z" fill="#16384f"/>
+    </marker>
+    <filter id="softShadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0d2330" flood-opacity="0.16"/>
+    </filter>
+    <linearGradient id="flowBlue" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d9e9ed"/>
+      <stop offset="0.55" stop-color="#8eb2c0"/>
+      <stop offset="1" stop-color="#1b526f"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfbf7"/>
+      <stop offset="1" stop-color="#edf3f2"/>
+    </linearGradient>
+    <style>
+      .bg { fill: #f7f8f4; }
+      .title { font: 800 60px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #05090d; }
+      .subtitle { font: 500 30px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #1c2933; }
+      .section { font: 800 36px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #071018; }
+      .heading { font: 800 30px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #071018; }
+      .body { font: 500 24px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #182631; }
+      .small { font: 500 21px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #304452; }
+      .tiny { font: 500 18px "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif; fill: #4b5c68; }
+      .accent { fill: #ff725f; }
+      .navy { fill: #103a56; }
+      .blue { fill: #356b85; }
+      .pale { fill: #d8e6e8; }
+      .panel { fill: url(#panel); stroke: #c4d1d5; stroke-width: 2; rx: 14; filter: url(#softShadow); }
+      .card { fill: #ffffff; stroke: #ccd8dc; stroke-width: 2; rx: 14; filter: url(#softShadow); }
+      .method { fill: #edf1fb; stroke: #9aa8d9; stroke-width: 2; rx: 14; }
+      .sarsa { fill: #fff0f1; stroke: #e16478; stroke-width: 4; rx: 16; filter: url(#softShadow); }
+      .ppo { fill: #fff1e3; stroke: #d99c62; stroke-width: 2; rx: 14; }
+      .metric { fill: #edf6f8; stroke: #9ebfcc; stroke-width: 2; rx: 12; }
+      .line { stroke: #263f50; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .thin { stroke: #748993; stroke-width: 2; fill: none; }
+      .dash { stroke-dasharray: 10 9; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="2048" height="1152"/>
+  <text class="title" x="72" y="86">SMC 強化學習交易系統：SARSA 決策模組應用位置</text>
+  <text class="subtitle" x="76" y="135">以價格行為特徵建立交易狀態，讓強化學習代理人根據回饋調整資金配置策略</text>
+
+  <text class="section" x="72" y="217">市場挑戰與研究動機</text>
+  <rect class="panel" x="72" y="250" width="465" height="350"/>
+  <path d="M112 492 C170 410, 208 535, 270 420 S396 354, 492 285" stroke="#143d59" stroke-width="8" fill="none"/>
+  <path d="M112 520 C190 485, 245 555, 326 495 S430 464, 500 420" stroke="#8caeb9" stroke-width="34" fill="none" opacity="0.75"/>
+  <path d="M120 538 L180 475 L240 532 L322 434 L395 470 L492 340" stroke="#123a56" stroke-width="6" fill="none"/>
+  <text class="accent" x="108" y="390" style="font: 800 94px Arial, sans-serif;">?</text>
+  <text class="heading" x="92" y="650">傳統交易規則的限制</text>
+  <text class="body" x="92" y="690">固定閾值與主觀判斷難以適應</text>
+  <text class="body" x="92" y="725">市場結構改變、波動擴大與成本衝擊。</text>
+
+  <rect class="card" x="585" y="205" width="900" height="110"/>
+  <text class="heading" x="625" y="250">核心設計：把主觀 SMC 觀察轉為可學習的交易狀態</text>
+  <text class="small" x="625" y="286">價格位置、Order Block 距離、Fair Value Gap、pairwise spread z-score 共同構成 state space。</text>
+
+  <path d="M170 820 C310 750, 405 880, 540 800 S760 700, 900 785 S1110 905, 1280 805 S1455 715, 1585 790"
+        stroke="url(#flowBlue)" stroke-width="72" fill="none" opacity="0.82"/>
+  <path d="M170 820 C310 750, 405 880, 540 800 S760 700, 900 785 S1110 905, 1280 805 S1455 715, 1585 790"
+        stroke="#123a56" stroke-width="4" fill="none" opacity="0.45"/>
+
+  <g transform="translate(112,782)">
+    <circle class="blue" cx="0" cy="0" r="13"/><circle class="pale" cx="54" cy="-38" r="13"/>
+    <circle class="blue" cx="84" cy="0" r="13"/><circle class="pale" cx="54" cy="38" r="13"/>
+    <circle class="blue" cx="150" cy="-26" r="13"/><circle class="pale" cx="150" cy="32" r="13"/>
+    <path class="thin" d="M13 0 C45 -10, 52 -28, 41 -38"/>
+    <path class="thin" d="M13 0 C45 10, 52 28, 41 38"/>
+    <path class="thin" d="M97 0 C120 -12, 130 -20, 137 -26"/>
+    <path class="thin" d="M97 0 C122 8, 130 22, 137 32"/>
+  </g>
+
+  <g transform="translate(295,708)">
+    <polygon points="0,70 95,20 190,70 95,120" fill="#dce8ea" stroke="#173b53" stroke-width="3"/>
+    <polygon points="0,70 0,190 95,240 95,120" fill="#bfd2d8" stroke="#173b53" stroke-width="3"/>
+    <polygon points="190,70 190,190 95,240 95,120" fill="#8fb0bd" stroke="#173b53" stroke-width="3"/>
+    <polygon points="78,111 112,93 112,216 78,199" class="accent" stroke="#8a3a31" stroke-width="2"/>
+    <path class="thin" d="M32 52 L128 102 M64 35 L160 85 M32 88 L128 38 M64 105 L160 55"/>
+  </g>
+  <text class="heading" x="72" y="1012">SMC 狀態張量</text>
+  <text class="small" x="72" y="1046">將市場結構轉為可被 agent 讀取的 state</text>
+
+  <rect class="method" x="610" y="420" width="320" height="185"/>
+  <text class="heading" x="640" y="464">State Space</text>
+  <text class="body" x="640" y="506">Premium / Discount</text>
+  <text class="body" x="640" y="541">Order Block 距離</text>
+  <text class="body" x="640" y="576">FVG 與 Spread</text>
+  <path class="line" d="M535 430 C570 438, 585 450, 604 470"/>
+
+  <rect class="ppo" x="1020" y="360" width="305" height="126"/>
+  <text class="heading" x="1050" y="405">目前系統：PPO</text>
+  <text class="body" x="1050" y="445">連續動作空間</text>
+  <text class="small" x="1050" y="474">直接輸出配置權重</text>
+
+  <rect class="sarsa" x="990" y="535" width="365" height="172"/>
+  <text class="heading" x="1024" y="584">SARSA 可導入位置</text>
+  <text class="body" x="1024" y="624">替代或對照 PPO 的決策核心</text>
+  <text class="small" x="1024" y="660">S, A, R, S', A' 更新 Q(S,A)</text>
+  <text class="tiny" x="1024" y="690">需離散化 state/action 或加入近似器</text>
+  <path class="line" d="M930 514 H1008"/>
+
+  <g transform="translate(1105,790)">
+    <polygon points="0,0 92,46 92,152 0,198 -92,152 -92,46" class="navy" opacity="0.98"/>
+    <circle cx="-45" cy="65" r="16" fill="#c7d9dc"/><circle cx="0" cy="38" r="16" fill="#c7d9dc"/>
+    <circle cx="45" cy="65" r="16" fill="#c7d9dc"/><circle cx="-20" cy="105" r="16" fill="#c7d9dc"/>
+    <circle cx="30" cy="125" r="16" fill="#c7d9dc"/><circle cx="-5" cy="158" r="16" fill="#c7d9dc"/>
+    <path d="M-45 65 L0 38 L45 65 L30 125 L-5 158 L-20 105 Z M-45 65 L30 125 M0 38 L-20 105 M45 65 L-5 158" stroke="#a9c3ca" stroke-width="3" fill="none"/>
+    <circle cx="88" cy="112" r="17" fill="#e8f23b"/>
+    <path d="M47 126 L88 112" stroke="#e8f23b" stroke-width="5"/>
+  </g>
+  <text class="heading" x="1012" y="1034">強化學習代理人</text>
+  <text class="small" x="960" y="1068">根據 reward 回饋調整下一次配置行為</text>
+
+  <path class="line" d="M1355 620 C1435 615, 1478 645, 1525 720"/>
+  <g transform="translate(1520,720)">
+    <path d="M0 80 L125 80 L125 35 L250 120 L125 205 L125 160 L0 160 Z" fill="#1b526f" stroke="#14384f" stroke-width="4"/>
+    <path d="M22 120 L55 120 L70 75 L98 150 L126 105 L154 130 L178 92 L208 120" stroke="#eff34f" stroke-width="7" fill="none"/>
+  </g>
+  <text class="heading" x="1590" y="1012">交易行為輸出</text>
+  <text class="small" x="1540" y="1046">買入、持有、賣出或資金權重分配</text>
+
+  <rect class="card" x="1518" y="205" width="455" height="330"/>
+  <text class="section" x="1552" y="250">模型評估觀點</text>
+  <line x1="1552" y1="285" x2="1938" y2="285" stroke="#9eacb4" stroke-width="2"/>
+  <text class="body" x="1570" y="330">累積報酬</text>
+  <rect class="metric" x="1745" y="305" width="175" height="38"/>
+  <text class="small" x="1776" y="331">收益能力</text>
+  <text class="body" x="1570" y="400">夏普比率</text>
+  <rect class="metric" x="1745" y="375" width="175" height="38"/>
+  <text class="small" x="1776" y="401">風險調整</text>
+  <text class="body" x="1570" y="470">最大回撤</text>
+  <rect class="metric" x="1745" y="445" width="175" height="38"/>
+  <text class="small" x="1776" y="471">風險控制</text>
+
+  <rect class="card" x="1518" y="580" width="455" height="158"/>
+  <text class="heading" x="1552" y="627">SARSA 在本系統的角色</text>
+  <text class="body" x="1552" y="668">不是資料處理模組，而是交易決策</text>
+  <text class="body" x="1552" y="703">agent，可用來和 PPO 做方法比較。</text>
+
+  <path class="thin dash" d="M1172 707 C1220 748, 1220 835, 1172 883"/>
+  <text class="tiny" x="1220" y="820">reward feedback loop</text>
+</svg>
