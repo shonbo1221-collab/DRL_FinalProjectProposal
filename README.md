@@ -10,6 +10,11 @@
 - 讓 PPO 根據 state 輸出 action，並轉換成投資組合權重。
 - 使用 out-of-sample 推論結果評估累積報酬率、Sharpe Ratio 與最大回撤。
 
+## Demo
+
+- 線上 Demo：[Streamlit App](https://drlfinalprojectproposal-43wylp7p2dzxjqbevjh9at.streamlit.app/)
+- 介紹影片：[YouTube](https://youtu.be/_QB1i0-QLpc)
+
 ![Project framework](docs/images/framework.png)
 
 ## 1. Introduction
